@@ -1,0 +1,11 @@
+dotoken          = "tokenid"
+organization     = "testingterraform4digitalocean"
+workspace        = "terraformfirewallfordigitalocean"
+vpcname          = "nameofvpc"
+subnetname       = "name of the  subnet" 
+dropletname      = "droplet"
+dropletimage     = "dropletimage"
+region           = "region"
+size             = "size"
+sshkeys          = ["sshkeys","sshkeys2"]
+vpc_uuid         = "id of VPC"

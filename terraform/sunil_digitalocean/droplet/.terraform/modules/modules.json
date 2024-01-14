@@ -1,0 +1,1 @@
+{"Modules":[{"Key":"","Source":"","Dir":"."},{"Key":"digitalocean_droplet","Source":"./digitalocean_droplet","Dir":"digitalocean_droplet"},{"Key":"digitalocean_vpc","Source":"./digitalocean_vpc","Dir":"digitalocean_vpc"}]}

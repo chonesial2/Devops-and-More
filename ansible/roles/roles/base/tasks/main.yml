@@ -1,7 +1,0 @@
----
-
-- name: Setup OS user
-  include: setup-user.yml
-  with_items: "{{ users }}"
-  loop_control:
-    loop_var: user_name
