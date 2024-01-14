@@ -1,0 +1,43 @@
+---
+# defaults file for dbbackup
+
+db_backup_user: root
+db_backup_group: root
+db_backup_script_dir: /srv/db-backup
+db_backup_log_dir: /var/log/db-backup
+db_backup_remote_backup_path: db-backups
+db_backup_local_backup_path: /opt/dbbackup
+
+db_backup_enabled: no
+db_backup_bucketName: bucket-name
+
+db_type: mysql # Options: mysql or postgres
+db_backup_list: []
+# db_backup_list:
+#   - Api1:
+#       db_name: Api1
+#       db_backup_local_backup_path: "{{ db_backup_local_backup_path }}"
+#       db_backup_remote_backup_path: "{{ db_backup_remote_backup_path }}"
+#       db_backup_bucketName: "{{ db_backup_bucketName }}"
+#   - App1:
+#       db_name: App1
+#       db_backup_local_backup_path: "{{ db_backup_local_backup_path }}"
+#       db_backup_remote_backup_path: "{{ db_backup_remote_backup_path }}"
+#       db_backup_bucketName: "{{ db_backup_bucketName }}"
+
+
+s3cmd:
+  key: 'XXXXXXXXXXXXXXXX'
+  secret: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+  host_base: nyc3.digitaloceanspaces.com
+
+alerts:
+  - type: slack
+    url: https://hooks.slack.com/services/XXXXXXXX/XXXXXXXX/xyxyxyxyxyxyxyxyxyxyxyxyxy
+
+  - type: teams
+    url: https://example.webhook.office.com/webhookb2/XXXXXXXXX/IncomingWebhook/YYYYYYYYYYY
+
+notifications:
+  - type: slack
+    url: https://hooks.slack.com/services/XXXXXXXX/XXXXXXXX/xyxyxyxyxyxyxyxyxyxyxyxyxy

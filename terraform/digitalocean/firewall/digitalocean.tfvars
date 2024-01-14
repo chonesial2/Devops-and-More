@@ -1,0 +1,7 @@
+dotoken          = "dop_v1_096ff3d1d2406c1f346f1af7af9f5d94f9aa023d294d33c5874d837c3a3613f4"
+accesskey        = "DO00DLLT4KBFTEETVT9B"
+secretkey        = "peyt/7emDa9xsdDrohgGviexxvPCMWMY95OXYCpszbU"
+dropletid        = "352751697"
+organization     = "testingterraform4digitalocean"
+workspace        = "terraformfirewallfordigitalocean"
+hostname         = "devops-test-server-02"

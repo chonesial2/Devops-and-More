@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appname-web
+  namespace: appname-qa
+  labels:
+    app: appname-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: appname-web
+  template:
+    metadata:
+      labels:
+        app: appname-web
+    spec:
+      containers:
+      - name: appname-web
+        image: registry.gitlab.com/stackexpress-revel/appname-web/qa
+        ports:
+        - containerPort: 80
+      imagePullSecrets:
+      - name: appname-web-regcred
+      nodeSelector:
+        doks.digitalocean.com/node-pool: pool-qa
+        kubernetes.io/os: linux

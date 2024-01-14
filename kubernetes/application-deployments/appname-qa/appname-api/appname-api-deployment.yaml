@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appname-api
+  namespace: appname-qa
+  labels:
+    app: appname-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: appname-api
+  template:
+    metadata:
+      labels:
+        app: appname-api
+    spec:
+      containers:
+      - name: appname-api
+        image: registry.gitlab.com/stackexpress-revel/appname-api/qa
+        ports:
+        - containerPort: 3000
+        env:
+          - name: RAILS_ENV
+            value: production
+          - name: RAILS_SERVE_STATIC_FILES
+            value: 'TRUE'
+          - name: DB_HOST
+            valueFrom:
+              secretKeyRef:
+                name: keys-appname-api
+                key: DB_HOST
+          - name: DB_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: keys-appname-api
+                key: DB_USERNAME
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: keys-appname-api
+                key: DB_PASSWORD
+          - name: DB_PORT
+            valueFrom:
+              secretKeyRef:
+                name: keys-appname-api
+                key: DB_PORT
+          - name: DB_NAME
+            valueFrom:
+              secretKeyRef:
+                name: keys-appname-api
+                key: DB_NAME
+          - name: SECRET_KEY_BASE
+            valueFrom:
+              secretKeyRef:
+                name: keys-appname-api
+                key: SECRET_KEY_BASE
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: keys-appname-api
+                key: AWS_ACCESS_KEY_ID
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: keys-appname-api
+                key: AWS_SECRET_ACCESS_KEY
+          - name: AWS_REGION
+            valueFrom:
+              secretKeyRef:
+                name: keys-appname-api
+                key: AWS_REGION
+          - name: AWS_ENDPOINT
+            valueFrom:
+              secretKeyRef:
+                name: keys-appname-api
+                key: AWS_ENDPOINT
+          - name: WHATSAPP_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: keys-appname-api
+                key: WHATSAPP_API_KEY
+          - name: WABOXAPP_URL
+            valueFrom:
+              secretKeyRef:
+                name: keys-appname-api
+                key: WABOXAPP_URL
+          - name: MOBILE_UID
+            valueFrom:
+              secretKeyRef:
+                name: keys-appname-api
+                key: MOBILE_UID
+          - name: REDIS_URL
+            valueFrom:
+              secretKeyRef:
+                name: keys-appname-api
+                key: REDIS_URL
+          - name: FLUENT_HOST
+            valueFrom:
+              secretKeyRef:
+                name: keys-appname-api
+                key: FLUENT_HOST
+          - name: FLUENT_PORT
+            valueFrom:
+              secretKeyRef:
+                name: keys-appname-api
+                key: FLUENT_PORT
+          - name: FLUENT_TAG
+            valueFrom:
+              secretKeyRef:
+                name: keys-appname-api
+                key: FLUENT_TAG
+      imagePullSecrets:
+      - name: appname-api-regcred
+      nodeSelector:
+        doks.digitalocean.com/node-pool: pool-qa
+        kubernetes.io/os: linux

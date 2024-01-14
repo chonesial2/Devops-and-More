@@ -1,0 +1,17 @@
+---
+
+[portal-api]
+portal-api-prod-01 ansible_ssh_host=167.99.149.242 ansible_ssh_user=deploy ansible_ssh_private_key_file=~/.ssh/coral/coral host_private_ip=10.136.76.100
+portal-api-prod-02 ansible_ssh_host=159.89.93.79 ansible_ssh_user=deploy ansible_ssh_private_key_file=~/.ssh/coral/coral host_private_ip=10.136.135.201
+
+[portal-api-db]
+portal-DB-prod-01 ansible_ssh_host=157.230.225.218 ansible_ssh_user=root ansible_ssh_private_key_file=~/.ssh/coral/coral host_private_ip=10.136.161.208
+portal-DB-prod-02 ansible_ssh_host=157.230.233.71 ansible_ssh_user=root ansible_ssh_private_key_file=~/.ssh/coral/coral host_private_ip=10.136.169.134
+
+[portal-all-servers:children]
+portal-api
+portal-api-db
+
+[portal-secrets:children]
+portal-api
+

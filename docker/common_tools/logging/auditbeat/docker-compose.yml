@@ -1,0 +1,18 @@
+---
+version: '2.2'
+services:
+  auditbeat:
+    image: docker.elastic.co/beats/auditbeat:7.16.2
+    container_name: auditbeat
+    user: root
+    command: --strict.perms=false -e  # -e flag to log to stderr and disable syslog/file output
+    cap_add:
+      - AUDIT_CONTROL
+      - AUDIT_READ
+    pid: host
+    env_file:
+      - .env
+    volumes:
+      - "./config/auditbeat.yml:/usr/share/auditbeat/auditbeat.yml:ro"
+    restart: unless-stopped
+
