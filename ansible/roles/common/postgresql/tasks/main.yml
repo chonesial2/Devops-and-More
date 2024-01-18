@@ -1,0 +1,32 @@
+---
+- name: copy .env file
+  template:
+    src: env_file.j2
+    dest: "{{ psql_env_file }}"
+  notify: Restart POSTGRESQL Container
+  tags:
+    - psql
+
+- name: Create Docker Compose file
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ psql_docker_compose_file }}"
+  notify: Restart POSTGRESQL Container
+  tags:
+    - psql
+
+
+- name: Ensure POSTGRESQL Docker container is running
+  command: docker-compose up -d
+  args:
+    chdir: "{{ psql_docker_compose_file | dirname }}"
+  notify: Restart POSTGRESQL Container
+  tags:
+    - psql
+
+
+- name: Add handlers for POSTGRESQL container restart
+  meta: flush_handlers
+  tags:
+    - psql
+

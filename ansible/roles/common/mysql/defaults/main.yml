@@ -1,0 +1,8 @@
+---
+#mysql_version: "8.0"  # Change as needed
+#mysql_root_user: "root"
+#mysql_root_password: "passwd"  # Change as needed
+#mysql_port: 3307
+mysql_docker_compose_file: "/srv/docker-apps/mysql/docker-compose.yml"
+mysql_env_file: "/srv/docker-apps/mysql/.env"
+

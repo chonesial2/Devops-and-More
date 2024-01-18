@@ -1,0 +1,8 @@
+[mysql]
+root  ansible_host=xxxxxxxxx ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa
+
+[psql]
+root  ansible_host=xxxxxxxxxxx ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa
+
+[mongodb]
+root  ansible_host=xxxxxxxxx ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa

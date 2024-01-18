@@ -1,0 +1,11 @@
+version: '3'
+services:
+  mongodb:
+    image: mongo:6.0
+    env_file:
+      - .env
+    ports:
+      - "27017:27017"
+    volumes:
+      - /opt/docker-mounts/mongodb:/data/db
+
