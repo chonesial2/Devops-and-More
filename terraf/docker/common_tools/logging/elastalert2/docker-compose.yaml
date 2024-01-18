@@ -1,0 +1,15 @@
+
+# File -  /srv/docker-apps/elastalert2/docker-compose.yml
+
+version: '3.3'
+services:
+  example_app:
+    image: jertel/elastalert2:2.3.0
+    container_name: elastalert
+    ## To run elastalert in verbose mode
+    # command:
+    #   - "--verbose"
+    restart: unless-stopped
+    volumes:
+      - "./configs/config.yaml:/opt/elastalert/config.yaml"
+      - "./rules:/opt/elastalert/rules"

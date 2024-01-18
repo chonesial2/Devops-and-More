@@ -1,0 +1,39 @@
+---
+- hosts: app-db-servers
+  become: yes
+  gather_facts: False 
+  pre_tasks:
+    - raw: sudo apt-get -y install python-simplejson
+      tags:
+        - prereq
+
+- hosts: app-db-servers
+  roles:
+    - role: postgresql
+      become: yes
+      tags: 
+        - postgresql
+    - role: dbbackup
+      become: yes
+      tags: 
+        - dbbackup
+    # - role: pgpool2
+    #   tags: 
+    #     - pgpool2
+  post_tasks:
+    - name: Create postgresql archive dir
+      become: yes
+      file:
+        path: "/var/lib/postgresql/{{ postgresql_version }}/main/archive"
+        state: directory
+        recurse: yes
+        owner: postgres
+        group: postgres
+        mode: 0770
+    - name: Install Digital Ocean monitoring
+      shell: "curl -sSL https://agent.digitalocean.com/install.sh | sh"
+      args:
+        executable: /bin/bash
+      tags:
+        - post_tasks
+        - do_monitoring

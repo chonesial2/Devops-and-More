@@ -1,0 +1,23 @@
+---
+version: '3'
+services:
+  sonarqube:
+    image: sonarqube:lts-community
+    ports:
+      - 9000:9000
+    volumes:
+      # data files, such as the embedded H2 database and Elasticsearch indexes
+      - "${DATA_DIR}/data:/opt/sonarqube/data"
+      # contains SonarQube logs about access, web process, CE process, Elasticsearch logs
+      - "${DATA_DIR}/logs:/opt/sonarqube/logs"
+      # for 3rd party plugins
+      - "${DATA_DIR}/extensions:/opt/sonarqube/extensions"
+    restart: unless-stopped
+    networks:
+      - jwilder_jwilder
+
+
+networks:
+  # Check the existing jwilder network name with command 'docker network ls'
+  jwilder_jwilder:
+    external: true
