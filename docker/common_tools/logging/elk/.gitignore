@@ -1,0 +1,6 @@
+.env.es
+.env.kibana
+.env.apm
+certs/
+configs/apm-server.yml
+

@@ -1,0 +1,30 @@
+[
+  {
+    "name": "demo-project-test-web",
+    "image": "950087689901.dkr.ecr.ap-south-1.amazonaws.com/demo-project-test-web:latest",
+    "cpu": 1,
+    "memory": 2048,
+    "essential": true,
+    "portMappings": [
+      {
+        "containerPort": 80,
+        "hostPort": 80,
+        "protocol": "tcp"
+      }
+    ],
+    "environment": [
+      {
+        "name": "APP_DEBUG",
+        "value": "true"
+      },
+      {
+        "name": "APP_ENV",
+        "value": "production"
+      },
+      {
+        "name": "APP_NAME",
+        "value": "demo-web"
+      }
+    ]
+  }
+]

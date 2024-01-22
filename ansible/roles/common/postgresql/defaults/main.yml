@@ -1,0 +1,4 @@
+---
+psql_docker_compose_file: "/srv/docker-apps/psql/docker-compose.yml"
+psql_env_file: "/srv/docker-apps/psql/.env"
+

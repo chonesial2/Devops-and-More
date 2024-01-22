@@ -1,0 +1,32 @@
+---
+- name: copy .env file
+  template:
+    src: env_file.j2
+    dest: "{{ mongodb_env_file }}"
+  notify: Restart mongodb Container
+  tags:
+    - mongodb
+
+- name: Create Docker Compose file
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ mongodb_docker_compose_file }}"
+  notify: Restart mongodb Container
+  tags:
+    - mongodb
+
+
+- name: Ensure mongodb Docker container is running
+  command: docker-compose up -d
+  args:
+    chdir: "{{ mongodb_docker_compose_file | dirname }}"
+  notify: Restart mongodb Container
+  tags:
+    - mongodb
+
+
+- name: Add handlers for mongodb container restart
+  meta: flush_handlers
+  tags:
+    - mongodb
+

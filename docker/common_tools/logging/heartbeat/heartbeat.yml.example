@@ -1,0 +1,42 @@
+# ElasticSearch
+heartbeat.monitors:
+
+# Example App - HTTP Check
+- name: App QA - SolidCP API from Web
+  type: http
+  schedule: '@every 5s'
+  urls:
+    - http://example.com:9002
+  check.response.status: 200
+  tags:
+    - Env-QA
+    - Cat-External_Service
+
+# Example App - Ping Check
+- name: App QA - ES Ping from Web
+  type: icmp
+  schedule: '@every 5s'
+  hosts:
+    - es.example.com
+  tags:
+    - Env-QA
+    - Cat-DevOps
+
+# Example MySQL database - TCP Check
+- name: App QA - MySQL from Web
+  type: tcp
+  hosts: ["tcp://10.122.0.2:3306"]
+  schedule: "@every 10s"
+  timeout: 3s
+  tags:
+    - Env-QA
+    - Cat-Database
+
+processors:
+- add_cloud_metadata: ~
+
+output.elasticsearch:
+  # Read value from env var, default to 'elasticsearch:9200'
+  hosts: '${ELASTICSEARCH_HOSTS:elasticsearch:9200}'
+  username: '${ELASTICSEARCH_USERNAME:}'
+  password: '${ELASTICSEARCH_PASSWORD:}'

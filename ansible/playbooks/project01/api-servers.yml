@@ -1,0 +1,28 @@
+---
+- hosts: api-servers
+  become: yes
+  gather_facts: False 
+  pre_tasks:
+    - raw: sudo apt-get -y install python-simplejson
+      tags:
+        - prereq
+
+- hosts: api-servers
+  roles:
+    - role: base
+      become: yes
+      tags: 
+        - base
+    - role: dbbackup
+      become: yes
+      tags: 
+        - dbbackup
+
+  post_tasks:
+    - name: Install Digital Ocean monitoring
+      shell: "curl -sSL https://agent.digitalocean.com/install.sh | sh"
+      args:
+        executable: /bin/bash
+      tags:
+        - post_tasks
+        - do_monitoring

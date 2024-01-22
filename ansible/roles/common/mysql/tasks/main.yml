@@ -1,0 +1,32 @@
+---
+- name: copy .env file
+  template:
+    src: env_file.j2
+    dest: "{{ mysql_env_file }}"
+  notify: Restart MySQL Container
+  tags:
+    - mysql
+
+- name: Create Docker Compose file
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ mysql_docker_compose_file }}"
+  notify: Restart MySQL Container
+  tags:
+    - mysql
+
+
+- name: Ensure MySQL Docker container is running
+  command: docker-compose up -d
+  args:
+    chdir: "{{ mysql_docker_compose_file | dirname }}"
+  notify: Restart MySQL Container
+  tags:
+    - mysql
+
+
+- name: Add handlers for MySQL container restart
+  meta: flush_handlers
+  tags:
+    - mysql
+

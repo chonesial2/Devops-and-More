@@ -1,0 +1,5 @@
+---
+
+mongodb_docker_compose_file: "/srv/docker-apps/mongodb/docker-compose.yml"
+mongodb_env_file: "/srv/docker-apps/mongodb/.env"
+
