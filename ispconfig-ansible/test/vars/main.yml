@@ -1,0 +1,7 @@
+---
+vars:
+  subdomainvar: 127.0.1.1
+  domainnamevar: test01.opspi.stacktotest.com
+  hostnamevar: se-test-01
+
+# vars file for dbbackup

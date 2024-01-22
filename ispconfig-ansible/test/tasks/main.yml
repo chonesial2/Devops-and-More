@@ -1,0 +1,86 @@
+---
+- name: Run wget command and save output to file
+  become: true
+  shell:
+    cmd: "wget -O - --no-check-certificate https://get.ispconfig.org > package.sh && chmod 777 package.sh"
+
+- name: Run package.sh script
+  become: true
+  shell: "sh package.sh -s -- --help"
+  timeout: 2400
+
+- name: Install dbconfig-common package
+  apt:
+    name: dbconfig-common
+    state: present
+
+- name: Install postfix package
+  apt:
+    name: postfix
+    state: present
+
+- name: Install getmail4 package
+  apt:
+    name: getmail4
+    state: present
+
+- name: Install rkhunter package
+  apt:
+    name: rkhunter
+    state: present
+
+- name: Install binutils package
+  apt:
+    name: binutils
+    state: present
+      
+- name: Download ISPConfig installation script
+  become: true
+  shell:
+    cmd: "wget -O - https://get.ispconfig.org > ispconfig-install.sh && chmod 777 ispconfig-install.sh"
+    chdir: "{{ ansible_env.PWD }}"
+
+- name: Execute ispconfig.ai.php script with options
+  become: true
+  expect:
+    chdir: "{{ ansible_env.PWD }}"
+    command: "sh ispconfig-install.sh --use-nginx --no-mail --no-dns --use-php=7.4,8.0 --use-ftp-ports=40110-40210 --no-quota --unattended-upgrades"
+    responses:
+      "Type 'yes' if you really want to continue:": "yes"
+    timeout: 2400
+  register: task_output
+
+- name: Extract ISPConfig admin password
+  set_fact:
+    ispconfig_password: "{{ task_output.stdout | regex_search('Your ISPConfig admin password is: (\\S+)', '\\1') }}"
+
+- name: Extract MySQL root password
+  set_fact:
+    mysql_password: "{{ task_output.stdout | regex_search('Your MySQL root password is: (\\S+)', '\\1') }}"
+
+- name: Save passwords to a file
+  become: true
+  ansible.builtin.blockinfile:
+    path: /tmp/passwords.txt
+    create: true
+    block: |
+      ISPConfig Admin Password: {{ ispconfig_password }}
+      MySQL Root Password: {{ mysql_password }}
+
+- name: Set MySQL root password for login
+  become: true
+  set_fact:
+    mysql_login_password: "{{ mysql_password }}"
+
+- name: Print passwords
+  debug:
+    msg:
+      - "ISPConfig Admin Password: {{ ispconfig_password }}"
+      - "MySQL Root Password: {{ mysql_password }}"
+      - "MySQL Login Password: {{ mysql_login_password }}"
+
+- name: Fetch passwords.txt from remote server
+  fetch:
+    src: /tmp/passwords.txt
+    dest: "{{ playbook_dir }}/passwords.txt"
+    flat: yes

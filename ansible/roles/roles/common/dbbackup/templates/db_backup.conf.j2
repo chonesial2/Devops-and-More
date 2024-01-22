@@ -1,0 +1,16 @@
+server_hostname={{ server_hostname }}
+
+backup_db_name="{{ db_backup_configs['db_name'] }}"
+
+{% if db_backup_configs['db_backup_local_backup_path'] is defined and db_backup_configs['db_backup_local_backup_path'].strip(' /') not in ('') %}
+db_backup_dir_local="{{ db_backup_configs['db_backup_local_backup_path'] }}/$backup_db_name"
+{% else %}
+db_backup_dir_local="/tmp/$backup_db_name"
+{% endif %}
+
+backup_file_name="$backup_db_name-`date +%Y%m%d%H%M%S`.gz"
+backup_path_local="$db_backup_dir_local/$backup_file_name"
+
+backup_path_remote="{{ db_backup_configs['db_backup_remote_backup_path'] }}"
+
+db_backup_bucket_name="{{ db_backup_configs['db_backup_bucketName'] }}"
