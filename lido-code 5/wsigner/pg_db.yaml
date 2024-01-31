@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: vault
+type: Opaque
+data:
+  POSTGRES_DB: d3NpZ25lcl9wZ19kYg==
+  POSTGRES_USER: d3NpZ25lcl9wZ191c2Vy
+  POSTGRES_PASSWORD: NzZYcW4yV21JOWU0YTlacW5HTUs=
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-statefulset
+  namespace: vault
+spec:
+  serviceName: "postgres"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchFields:
+                  - key: metadata.name
+                    operator: In
+                    values:
+                      - "one006-truservcomm-jhb1-024" 
+      containers:
+        - name: postgres
+          image: postgres:12
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: postgres-secret
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: schemas
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: data
+          hostPath:
+            path: /opt/k8s-mounts/pg_data
+        - name: schemas
+          hostPath:
+            path: /opt/k8s-mounts/schemas
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: vault
+spec:
+  selector:
+    app: postgres
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+  type: ClusterIP

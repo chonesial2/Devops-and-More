@@ -1,0 +1,81 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: teku-builder-ln12
+  namespace: prod
+  labels:
+    app: teku-builder-ln12
+    app.kubernetes.io/name: teku-builder-ln12
+    app.kubernetes.io/instance: teku-builder-ln12
+
+spec:
+  serviceName: teku-beacon-svc-ln12
+  replicas: 1
+  selector:
+    matchLabels:
+      app: teku-builder-ln12
+      app.kubernetes.io/name: teku-builder-ln12
+      app.kubernetes.io/instance: teku-builder-ln12
+  template:
+    metadata:
+      labels:
+        app: teku-builder-ln12
+        app.kubernetes.io/name: teku-builder-ln12
+        app.kubernetes.io/instance: teku-builder-ln12
+    spec:
+      terminationGracePeriodSeconds: 60
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - sa-ln12
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 1000
+      containers:
+      - name: teku-builder
+        image: flashbots/mev-boost:1.6
+        imagePullPolicy: Always
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        command:
+        - "/bin/sh"
+        - "-c"
+        args:
+          - |
+            exec ./mev-boost -mainnet -addr 0.0.0.0:18550 -relay-check -relays https://0xac6e77dfe25ecd6110b8e780608cce0dab71fdd5ebea22a16c0205200f2f8e2e3ad3b71d3499c54ad14d6c21b41a37ae@boost-relay.flashbots.net
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teku-builder-svc-ln12
+  namespace: prod
+  labels:
+    app: teku-builder-svc-ln12
+    app.kubernetes.io/name: teku-builder-svc-ln12
+    app.kubernetes.io/instance: teku-builder-svc-ln12
+spec:
+  selector:
+    app: teku-builder-ln12
+    app.kubernetes.io/name: teku-builder-ln12
+    app.kubernetes.io/instance: teku-builder-ln12
+
+  ports:
+  - name: port-18550
+    protocol: TCP
+    port: 18550
+    targetPort: 18550

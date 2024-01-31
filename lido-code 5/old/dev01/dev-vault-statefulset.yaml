@@ -1,0 +1,188 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+  labels:
+    app.kubernetes.io/instance: vault
+    app.kubernetes.io/name: vault
+  name: vault
+  namespace: dev
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  podManagementPolicy: OrderedReady
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: vault
+      app.kubernetes.io/name: vault
+      component: server
+  serviceName: vault-internal-svc
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/instance: vault
+        app.kubernetes.io/name: vault
+        component: server
+    spec:
+      containers:
+      - args:
+        - "cp /vault/config/extraconfig-from-values.hcl /tmp/storageconfig.hcl;\n[
+          -n \"${HOST_IP}\" ] && sed -Ei \"s|HOST_IP|${HOST_IP?}|g\" /tmp/storageconfig.hcl;\n[
+          -n \"${POD_IP}\" ] && sed -Ei \"s|POD_IP|${POD_IP?}|g\" /tmp/storageconfig.hcl;\n[
+          -n \"${HOSTNAME}\" ] && sed -Ei \"s|HOSTNAME|${HOSTNAME?}|g\" /tmp/storageconfig.hcl;\n[
+          -n \"${API_ADDR}\" ] && sed -Ei \"s|API_ADDR|${API_ADDR?}|g\" /tmp/storageconfig.hcl;\n[
+          -n \"${TRANSIT_ADDR}\" ] && sed -Ei \"s|TRANSIT_ADDR|${TRANSIT_ADDR?}|g\"
+          /tmp/storageconfig.hcl;\n[ -n \"${RAFT_ADDR}\" ] && sed -Ei \"s|RAFT_ADDR|${RAFT_ADDR?}|g\"
+          /tmp/storageconfig.hcl;\n/usr/local/bin/docker-entrypoint.sh vault server
+          -config=/tmp/storageconfig.hcl     \n"
+        command:
+        - /bin/sh
+        - -ec
+        env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: VAULT_ADDR
+          value: http://127.0.0.1:8200
+        - name: VAULT_API_ADDR
+          value: http://$(POD_IP):8200
+        - name: SKIP_CHOWN
+          value: "true"
+        - name: SKIP_SETCAP
+          value: "true"
+        - name: VAULT_CLUSTER_ADDR
+          value: https://$(HOSTNAME).vault-internal-svc:8201
+        - name: HOME
+          value: /home/vault
+        image: hashicorp/vault:latest
+        imagePullPolicy: IfNotPresent
+        name: vault
+        ports:
+        - containerPort: 8200
+          name: http
+          protocol: TCP
+        - containerPort: 8201
+          name: https-internal
+          protocol: TCP
+        - containerPort: 8202
+          name: http-rep
+          protocol: TCP
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -ec
+            - vault status -tls-skip-verify
+          failureThreshold: 2
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 3
+        resources: {}
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+          allowPrivilegeEscalation: false
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /vault/data
+          name: data
+        - mountPath: /vault/config
+          name: config
+        - mountPath: /home/vault
+          name: home
+        - mountPath: /tls
+          name: certs-tls-pvc
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - args:
+        - |
+          #!/bin/sh
+          set -e
+          if [ -f /certs/server.crt ]; then
+            echo 'SSL certificate already exists'
+            exit 0
+          fi
+
+          echo "Installing openssl ..."
+          apk update && apk add openssl && rm -rf /var/cache/apk/*
+          echo 'Generating SSL certificates ...'
+          openssl req -x509 -newkey rsa:2048 -nodes -days 36500 -keyout /certs/server.key -out /certs/server.crt -subj '/CN=vault' -addext 'subjectAltName = DNS:vault,DNS:vault-svc,DNS:localhost,IP:127.0.0.1'
+          echo "Generating truststore ..."
+          openssl pkcs12 -export -in /certs/server.crt -inkey /certs/server.key -out /certs/truststore.p12 -passout pass:lnLido@123
+          echo "Generating knownhosts file ..."
+          openssl x509 -in /certs/server.crt -noout -sha256 -fingerprint | awk -F= '{print $2}' | tr -d ': '
+          echo "vault-svc:8200 $(openssl x509 -in /certs/server.crt -noout -sha256 -fingerprint | awk -F= '{print $2}' | tr -d ': ')" > /certs/knownhosts
+          chmod 640 /certs/server.key
+          chgrp 1000 /certs/*
+          exit 0
+
+        command:
+        - /bin/sh
+        - -c
+        image: alpine:latest
+        imagePullPolicy: Always
+        name: init-vault-ssl-certs
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /certs
+          name: certs-tls-pvc
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      serviceAccount: vault
+      serviceAccountName: vault
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: vault-config
+        name: config
+      - emptyDir: {}
+        name: home
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      creationTimestamp: null
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+      storageClassName: microk8s-hostpath
+      volumeMode: Filesystem
+    status:
+      phase: Pending
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      creationTimestamp: null
+      name: certs-tls-pvc
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 100Mi
+      storageClassName: microk8s-hostpath
+      volumeMode: Filesystem

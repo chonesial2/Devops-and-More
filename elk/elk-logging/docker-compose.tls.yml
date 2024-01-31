@@ -1,0 +1,36 @@
+version: '2.2'
+services:
+  es01:
+    image: elasticsearch:8.8.1
+    # image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+    container_name: es01
+    profiles:
+      - es
+      - logging
+    env_file:
+      - .env.es
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - /opt/docker-mounts/esdata:/usr/share/elasticsearch/data
+      - /opt/docker-mounts/config:/usr/share/elasticsearch/config/elasticsearch-keystore
+      - ./certs/elastic-certificates.p12:/usr/share/elasticsearch/config/elastic-certificates.p12:ro
+    ports:
+      - 9200:9200
+    restart: unless-stopped
+    healthcheck:
+      test: curl --cacert ./certs/elastic-stack-ca.p12 -s https://localhost:9200 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      interval: 30s
+      timeout: 10s
+      retries: 50
+    networks:
+      - esnet
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"  # Sets the maximum size of the log file
+        max-file: "10"    # Sets the maximum number of log files to retain
+networks:
+  esnet:

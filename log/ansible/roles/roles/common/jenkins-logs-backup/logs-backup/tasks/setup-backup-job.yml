@@ -1,0 +1,40 @@
+---
+# tasks file for log-backup
+
+- set_fact:
+    log_file_configs_name: "{{ item.keys() | first }}"
+    log_file_configs: "{{ item[ item.keys() | first ] }}"
+  tags:
+    - logs_backup_script
+    - configs
+    - logs_backup_configs
+
+- name: Set hostname for logs path
+  set_fact:
+    server_hostname: "{{ inventory_hostname }}"
+    # server_hostname: "{{ server_hostname | inventory_hostname }}"
+
+- name: Put the log backup configuration for {{ log_file_configs_name }}
+  template:
+    src: log_backup.conf.j2
+    dest: "{{ log_backup_script_dir }}/conf.d/{{ log_file_configs_name }}"
+    owner: "{{ log_backup_user }}"
+    group: "{{ log_backup_group }}"
+    mode: 0440
+  tags:
+    - logs_backup_script
+    - configs
+    - logs_backup_configs
+
+- name: Schedule cron for log backup for {{ log_file_configs_name }}
+  cron:
+    name: "Logs Backup cron - {{ log_file_configs_name }}"
+    hour: 1
+    minute: 15
+    job: "/bin/bash {{ log_backup_script_dir }}/log_backup.sh {{ log_backup_script_dir }}/conf.d/{{ log_file_configs_name }} >> /var/log/logs_backup.{{ log_file_configs_name }}.out.log 2>> /var/log/logs_backup.{{ log_file_configs_name }}.err.log"
+    user: "{{ log_backup_user }}"
+    state: present
+  tags:
+    - logs_backup_script
+    - configs
+    - logs_backup_configs

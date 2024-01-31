@@ -1,0 +1,18 @@
+---
+- hosts: localhost
+  gather_facts: False
+
+  vars:
+    users:
+      user1:
+        groups:
+          - sudo
+          - sudoadm
+        ssh_keys:
+          - ssh-rsa ......public-key...... user1@host1.mydomain.local
+          - ssh-rsa ......public-key...... user1@host2.mydoamin.local
+
+
+  roles:
+    - role: roles/base
+      become: yes

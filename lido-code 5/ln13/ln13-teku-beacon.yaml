@@ -1,0 +1,195 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: teku-beacon-ln13
+  namespace: prod
+  labels:
+    app: teku-beacon-ln13
+    app.kubernetes.io/name: teku-beacon-ln13
+    app.kubernetes.io/instance: teku-beacon-ln13
+
+spec:
+  serviceName: teku-beacon-svc-ln13
+  replicas: 1
+  selector:
+    matchLabels:
+      app: teku-beacon-ln13
+      app.kubernetes.io/name: teku-beacon-ln13
+      app.kubernetes.io/instance: teku-beacon-ln13
+  template:
+    metadata:
+      labels:
+        app: teku-beacon-ln13
+        app.kubernetes.io/name: teku-beacon-ln13
+        app.kubernetes.io/instance: teku-beacon-ln13
+    spec:
+      terminationGracePeriodSeconds: 60
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - sa-ln13
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 1000
+      volumes:
+        - name: teku-beacon-pv-ln13
+          persistentVolumeClaim:
+            claimName: teku-beacon-pvc-ln13
+        - name: teku-jwt-pv-ln13
+          persistentVolumeClaim:
+            claimName: teku-jwt-pvc-ln13
+      containers:
+      - name: teku-beacon
+        image: consensys/teku:23.10.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 32003
+        - containerPort: 4000
+        - containerPort: 8008
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: JAVA_OPTS
+          value: "-Xmx8g"
+        command:
+        - "/bin/sh"
+        - "-c"
+        args:
+          - |
+            exec /opt/teku/bin/teku --initial-state=https://beaconstate.ethstaker.cc --data-base-path=/root --ee-endpoint="http://besu-exec-client-svc-ln13.prod:8551" --p2p-port=32003 \
+            --rest-api-enabled=true --rest-api-interface=0.0.0.0 --rest-api-host-allowlist=* --rest-api-port=4000 \
+            --metrics-enabled=true --metrics-interface=0.0.0.0 --metrics-categories=BEACON,PROCESS,LIBP2P,JVM,NETWORK,PROCESS \
+            --metrics-host-allowlist=* --metrics-port=8008 --validators-proposer-default-fee-recipient=0x388C818CA8B9251b393131C08a736A67ccB19297 \
+            --p2p-peer-lower-bound=25 --p2p-nat-method=UPNP  --ee-jwt-secret-file=/jwt/jwt.hex --log-destination=BOTH --builder-endpoint="http://teku-builder-svc-ln13.prod:18550" --network=mainnet
+        volumeMounts:
+        - name: teku-beacon-pv-ln13
+          mountPath: /root
+        - name: teku-jwt-pv-ln13
+          mountPath: /jwt
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: teku-beacon-pv-ln13
+  labels:
+    type: local
+  namespace: prod
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1000Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/data/teku-beacon-pv-ln13"
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: teku-jwt-pv-ln13
+  labels:
+    type: local
+  namespace: prod
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 3Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/data/teku-jwt-pv-ln13"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: teku-beacon-pvc-ln13
+  namespace: prod
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 700Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: teku-jwt-pvc-ln13
+  namespace: prod
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teku-svc-ln13
+  namespace: prod
+  labels:
+    app: teku-svc-ln13
+    app.kubernetes.io/name: teku-svc-ln13
+    app.kubernetes.io/instance: teku-svc-ln13
+spec:
+  selector:
+    app: teku-beacon-ln13
+    app.kubernetes.io/name: teku-beacon-ln13
+    app.kubernetes.io/instance: teku-beacon-ln13
+  ports:
+  - name: api
+    protocol: TCP
+    port: 4000
+    targetPort: 4000
+  - name: metrics
+    protocol: TCP
+    port: 8008
+    targetPort: 8008
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teku-svc-p2p-ln13
+  namespace: prod
+  labels:
+    app: teku-svc-p2p-ln13
+    app.kubernetes.io/name: teku-svc-p2p-ln13
+    app.kubernetes.io/instance: teku-svc-p2p-ln13
+spec:
+  type: NodePort
+  selector:
+    app: teku-beacon-ln13
+    app.kubernetes.io/name: teku-beacon-ln13
+    app.kubernetes.io/instance: teku-beacon-ln13
+  ports:
+    - name: teku-tcp
+      port: 32003
+      targetPort: 32003
+      nodePort: 32003
+      protocol: TCP
+    - name: teku-udp
+      port: 32003
+      targetPort: 32003
+      nodePort: 32003
+      protocol: UDP

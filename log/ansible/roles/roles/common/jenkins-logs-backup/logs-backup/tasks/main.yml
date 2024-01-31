@@ -1,0 +1,57 @@
+---
+# tasks file for log-backup
+- name: Install pip
+  apt:
+#    update_cache: yes
+    name: python3-pip
+    state: latest
+  tags: 
+    - pip
+
+- name: Install s3cmd via pip
+  pip:
+    name: s3cmd
+    state: latest
+  tags:
+    - pip-packages
+
+- name: Place S3 config file
+  template:
+    src: "s3cfg.j2"
+    dest: /root/.s3cfg
+    owner: "{{ log_backup_user }}"
+    group: "{{ log_backup_group }}"
+    mode: 0600
+  tags:
+    - s3-configs
+    - configs
+
+- name: Make sure the script directory exist
+  file:
+    path: "{{ log_backup_script_dir }}"
+    state: directory
+    recurse: yes
+    mode: 0755
+
+- name: Make sure the script config directory exist
+  file:
+    path: "{{ log_backup_script_dir }}/conf.d"
+    state: directory
+    recurse: yes
+    mode: 0755
+
+- name: Put the log backup script
+  template:
+    src: log_backup.sh.j2
+    dest: "{{ log_backup_script_dir }}/log_backup.sh"
+    owner: "{{ log_backup_user }}"
+    group: "{{ log_backup_group }}"
+    mode: 0750
+  tags:
+    - backup-script
+
+- name: Set up specific logs backup configs
+  include_tasks: setup-backup-job.yml
+  loop: '{{ logs_files_backup_list }}'
+  tags:
+    - logs_backup_configs

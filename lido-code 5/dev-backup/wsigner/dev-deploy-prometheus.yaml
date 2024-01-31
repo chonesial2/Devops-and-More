@@ -1,0 +1,152 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  labels:
+    app: prometheus
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+      annotations:
+        #prometheus.io/scrape: "true"
+          #  prometheus.io/port: "9090"
+    spec:
+      serviceAccountName: prometheus
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 1000
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.32.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            - name: prometheus-pvc
+              mountPath: /prometheus
+            - name: prometheus-config
+              mountPath: /etc/prometheus/
+              readOnly: true
+            - name: prometheus-config-cred
+              mountPath: /etc/prometheus/creds/
+          ports:
+            - containerPort: 9090
+              name: http
+              protocol: TCP
+          command:
+            # - "/bin/sh"
+            # - "-c"
+            # - "sleep 600"
+            - /bin/prometheus
+          args:
+            - --storage.tsdb.path=/prometheus
+            - --config.file=/etc/prometheus/prometheus.yaml
+            - --web.config.file=/etc/prometheus/creds/webconfig.yaml
+      volumes:
+        - name: prometheus-pvc
+          persistentVolumeClaim:
+            claimName: prometheus-pvc
+        - name: prometheus-config
+          configMap:
+            name: prometheus-configmap
+            items:
+              - key: prometheus.yaml
+                path: prometheus.yaml
+        - name: prometheus-config-cred
+          configMap:
+            name: prometheus-configmap-cred
+            items:
+              - key: webconfig.yaml
+                path: webconfig.yaml
+---
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/component: exporter
+    app.kubernetes.io/name: node-exporter
+  name: node-exporter
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: exporter
+      app.kubernetes.io/name: node-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: exporter
+        app.kubernetes.io/name: node-exporter
+    spec:
+      containers:
+      - args:
+        - --path.sysfs=/host/sys
+        - --path.rootfs=/host/root
+        - --no-collector.wifi
+        - --no-collector.hwmon
+        - --collector.filesystem.ignored-mount-points=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/pods/.+)($|/)
+        - --collector.netclass.ignored-devices=^(veth.*)$
+        name: node-exporter
+        image: prom/node-exporter
+        ports:
+          - containerPort: 9100
+            protocol: TCP
+        resources:
+          limits:
+            cpu: 250m
+            memory: 180Mi
+          requests:
+            cpu: 102m
+            memory: 180Mi
+        volumeMounts:
+        - mountPath: /host/sys
+          mountPropagation: HostToContainer
+          name: sys
+          readOnly: true
+        - mountPath: /host/root
+          mountPropagation: HostToContainer
+          name: root
+          readOnly: true
+      volumes:
+      - hostPath:
+          path: /sys
+        name: sys
+      - hostPath:
+          path: /
+        name: root
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: node-exporter
+  namespace: monitoring
+  annotations:
+      prometheus.io/scrape: 'true'
+      prometheus.io/port:   '9100'
+spec:
+  selector:
+      app.kubernetes.io/component: exporter
+      app.kubernetes.io/name: node-exporter
+  ports:
+  - name: node-exporter
+    protocol: TCP
+    port: 9100
+    targetPort: 9100
+

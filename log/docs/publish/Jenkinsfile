@@ -1,0 +1,87 @@
+pipeline {
+    agent any
+
+    options {
+        // Only keep the 10 most recent builds
+        buildDiscarder(logRotator(numToKeepStr:'10'))
+    }
+
+    triggers {
+        pollSCM('* * * * *')
+    }
+
+    parameters {
+        booleanParam(
+               name: 'DEBUG_MODE',
+               defaultValue: false,
+               description: 'Select if you want to Run in debug mode'
+         )
+
+    }
+
+    environment {
+        IMAGE_REGISTRY = 'https://registry.gitlab.com'
+        IMAGE_NAME = 'registry.gitlab.com/stackexpresso/devops/code-templates/docs'
+        REGISTRY_CREDENTIAL_ID = 'gitlab-repo'
+        docker_image = ''
+        NAMESPACE = 'stackexpress'
+    }
+
+    stages {
+        stage('Build') {
+            steps {
+                echo 'Starting docker build...'
+                dir('docs/publish'){
+                    script {
+                        docker_image = docker.build("${IMAGE_NAME}:${GIT_COMMIT.substring(0,8)}")
+                    }
+                }
+           }
+       }
+
+        stage('Push') {
+            steps {
+                echo 'Pushing Image to Registery...'
+
+                script {
+                    docker.withRegistry("${IMAGE_REGISTRY}", REGISTRY_CREDENTIAL_ID ) {
+                        docker_image.push()
+                        docker_image.push('latest')
+                    }
+                }
+            }
+       }
+
+        stage('Deploy') {
+            steps {
+                echo 'Deploying latest changes on k8s cluster'
+                echo "New Docker Image - $docker_image.id"
+
+                withCredentials([file(credentialsId: 'se-kube-config', variable: 'KUBECONFIG')]) {
+                    sh "kubectl set image deployment/stackexpress-docs stackexpress-docs=${docker_image.id} -n $NAMESPACE"
+                }
+            }
+        }
+
+    }
+
+
+    post {
+        always {
+            echo 'Job complete'
+        }
+        success {
+            echo 'Job successful'
+        }
+        failure {
+            echo 'Job failed'
+        }
+        unstable {
+            echo 'Job unstable'
+        }
+        changed {
+            echo 'Job state changed'
+        }
+
+    }
+}

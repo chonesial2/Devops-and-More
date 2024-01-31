@@ -1,0 +1,186 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: teku-beacon-dev01
+  namespace: dev
+  labels:
+    app: teku-beacon-dev01
+    app.kubernetes.io/name: teku-beacon-dev01
+    app.kubernetes.io/instance: teku-beacon-dev01
+
+spec:
+  replicas: 1
+  serviceName: teku-beacon-svc-dev01
+  selector:
+    matchLabels:
+      app: teku-beacon-dev01
+      app.kubernetes.io/name: teku-beacon-dev01
+      app.kubernetes.io/instance: teku-beacon-dev01
+
+  template:
+    metadata:
+      labels:
+        app: teku-beacon-dev01
+        app.kubernetes.io/name: teku-beacon-dev01
+        app.kubernetes.io/instance: teku-beacon-dev01
+
+    spec:
+      terminationGracePeriodSeconds: 60
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - solo-staking-dev01
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 1000
+      volumes:
+        - name: teku-beacon-pv-dev01
+          persistentVolumeClaim:
+            claimName: teku-beacon-pvc-dev01
+        - name: teku-jwt-pv-dev01
+          persistentVolumeClaim:
+            claimName: teku-jwt-pvc-dev01       
+      containers:
+      - name: teku-beacon
+        image: consensys/teku:23.8.0
+        imagePullPolicy: Always
+        env:
+        - name: JAVA_OPTS
+          value: "-Xmx8g"
+        command:
+        - "/bin/sh"
+        - "-c"
+        args:
+          - |
+            exec /opt/teku/bin/teku --initial-state=https://goerli.checkpoint-sync.ethpandaops.io --data-base-path=/root --ee-endpoint="http://besu-exec-client-svc-dev01.dev:8551" --p2p-port=32000 \
+            --rest-api-enabled=true --rest-api-interface=0.0.0.0 --rest-api-host-allowlist=* --rest-api-port=4000 \
+            --metrics-enabled=true --metrics-interface=0.0.0.0 --metrics-categories=BEACON,PROCESS,LIBP2P,JVM,NETWORK,PROCESS \
+            --metrics-host-allowlist=* --metrics-port=8008 --validators-proposer-default-fee-recipient=0x12ddE92E641F1FD82Bd2B0707b7ddee4cb4f671a \
+            --p2p-peer-lower-bound=25 --p2p-nat-method=UPNP  --ee-jwt-secret-file=/jwt/jwt.hex --log-destination=BOTH --builder-endpoint="http://127.0.0.1:18550" --network=goerli
+        volumeMounts:
+        - name: teku-beacon-pv-dev01
+          mountPath: /root
+        - name: teku-jwt-pv-dev01
+          mountPath: /jwt
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: teku-beacon-pv-dev01
+  labels:
+    type: local
+  namespace: dev
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1000Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/data/teku-beacon-pv-dev01"
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: teku-jwt-pv-dev01
+  labels:
+    type: local
+  namespace: dev
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 3Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/data/teku-jwt-pv-dev01"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: teku-beacon-pvc-dev01
+  namespace: dev
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 700Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: teku-jwt-pvc-dev01
+  namespace: dev
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teku-svc-dev01
+  namespace: dev
+  labels:
+    app: teku-svc-dev01
+    app.kubernetes.io/name: teku-svc-dev01
+    app.kubernetes.io/instance: teku-svc-dev01
+spec:
+  selector:
+    app: teku-beacon-dev01
+    app.kubernetes.io/name: teku-beacon-dev01
+    app.kubernetes.io/instance: teku-beacon-dev01
+
+  ports:
+  - name: port-4000
+    protocol: TCP
+    port: 4000
+    targetPort: 4000
+  - name: port-8008
+    protocol: TCP
+    port: 8008
+    targetPort: 8008
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teku-svc1-dev01
+  namespace: dev
+  labels:
+    app: teku-svc-p2p-dev01
+    namespace: dev
+    app.kubernetes.io/name: teku-svc-p2p-dev01
+    app.kubernetes.io/instance: teku-svc-p2p-dev01
+spec:
+  type: NodePort
+  selector:
+    app: teku-beacon-dev01
+    app.kubernetes.io/name: teku-beacon-dev01
+    app.kubernetes.io/instance: teku-beacon-dev01
+
+  ports:
+    - name: teku-tcp
+      port: 32000
+      targetPort: 32000
+      nodePort: 32000
+      protocol: TCP
+    - name: teku-udp
+      port: 32000
+      targetPort: 32000
+      nodePort: 32000
+      protocol: UDP

@@ -1,0 +1,18 @@
+---
+version: '3.3'
+
+services:
+
+  php-elastic-apm:
+    container_name: php-elastic-apm
+    build:
+      context: .
+    ports:
+      - 8081:80
+    volumes:
+      - ./data/conf/elastic-apm-custom.ini:/opt/elastic/apm-agent-php/etc/elastic-apm-custom.ini
+      - ./data/html:/var/www/html
+    cpu_percent: 75
+    mem_limit: 512M
+    restart: unless-stopped
+

@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: teku-builder-dev01
+  namespace: dev
+  labels:
+    app: teku-builder-dev01
+    app.kubernetes.io/name: teku-builder-dev01
+    app.kubernetes.io/instance: teku-builder-dev01
+
+spec:
+  replicas: 1
+  serviceName: teku-builder-svc-dev01
+  selector:
+    matchLabels:
+      app: teku-builder-dev01
+      app.kubernetes.io/name: teku-builder-dev01
+      app.kubernetes.io/instance: teku-builder-dev01
+
+  template:
+    metadata:
+      labels:
+        app: teku-builder-dev01
+        app.kubernetes.io/name: teku-builder-dev01
+        app.kubernetes.io/instance: teku-builder-dev01
+
+    spec:
+      terminationGracePeriodSeconds: 60
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - solo-staking-dev01
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 1000
+      containers:
+      - name: teku-builder
+        image: flashbots/mev-boost:1.6
+        imagePullPolicy: Always
+        securityContext:
+          runAsUser: 0
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        command:
+        - "/bin/sh"
+        - "-c"
+        args:
+          - |
+            exec ./mev-boost -goerli -addr 0.0.0.0:18550 -relay-check -relays https://0xafa4c6985aa049fb79dd37010438cfebeb0f2bd42b115b89dd678dab0670c1de38da0c4e9138c9290a398ecd9a0b3110@builder-relay-goerli.flashbots.net
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teku-builder-svc-dev01
+  namespace: dev
+  labels:
+    app: teku-builder-svc-dev01
+    app.kubernetes.io/name: teku-builder-svc-dev01
+    app.kubernetes.io/instance: teku-builder-svc-dev01
+spec:
+  selector:
+    app: teku-builder-dev01
+    app.kubernetes.io/name: teku-builder-dev01
+    app.kubernetes.io/instance: teku-builder-dev01
+
+  ports:
+  - name: port-18550
+    protocol: TCP
+    port: 18550
+    targetPort: 18550

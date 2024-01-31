@@ -1,0 +1,17 @@
+---
+
+[api-servers]
+api-prod-01 ansible_ssh_host=1.2.3.1 ansible_ssh_user=deploy ansible_ssh_private_key_file=~/.ssh/coral/coral host_private_ip=10.136.76.100
+api-prod-02 ansible_ssh_host=1.2.3.2 ansible_ssh_user=deploy ansible_ssh_private_key_file=~/.ssh/coral/coral host_private_ip=10.136.135.201
+
+[db-servers]
+db-prod-01 ansible_ssh_host=1.2.3.11 ansible_ssh_user=root ansible_ssh_private_key_file=~/.ssh/coral/coral host_private_ip=10.136.161.208
+db-prod-02 ansible_ssh_host=1.2.3.12 ansible_ssh_user=root ansible_ssh_private_key_file=~/.ssh/coral/coral host_private_ip=10.136.169.134
+
+[all-servers:children]
+api-servers
+db-servers
+
+[app-secrets:children]
+api-servers
+

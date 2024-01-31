@@ -1,0 +1,8 @@
+server_hostname={{ server_hostname }}
+log_dir='{{ log_file_configs["log_dir"] }}'
+log_file_name={{ log_file_configs["log_fileName"] }}
+log_file_extension='{{ log_file_configs["log_file_extension"] }}'
+remote_backup_path='{{ log_file_configs["log_remote_backup_path"] }}'
+bucketName='{{ log_file_configs["log_bucketName"] }}'
+slack_webhook_alerts={{ slack_webhook['alerts'] }}
+slack_webhook_notifications={{ slack_webhook['notifications'] }}

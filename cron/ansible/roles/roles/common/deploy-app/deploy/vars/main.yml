@@ -1,0 +1,6 @@
+---
+# vars file for gitlab registry
+
+gitlab_registry_username: "test-user"
+gitlab_registry_password: "password"
+gitlab_registry_url: "https://github.com"

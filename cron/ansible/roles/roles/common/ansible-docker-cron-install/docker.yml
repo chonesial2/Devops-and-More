@@ -1,0 +1,9 @@
+- hosts: XXXXXXXX
+  gather_facts: False
+  become: yes
+#  become_method: sudo
+  vars_files:
+    - docker/defaults/main.yml
+  roles:
+    - role: docker
+

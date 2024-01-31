@@ -1,0 +1,186 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: besu-exec-client-ln11
+  namespace: prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: besu-exec-client-ln11
+      app.kubernetes.io/name: besu-exec-client-ln11
+  serviceName: besu-exec-client-svc-ln11
+  template:
+    metadata:
+      labels:
+        app: besu-exec-client-ln11
+        app.kubernetes.io/name: besu-exec-client-ln11
+    spec:
+      terminationGracePeriodSeconds: 60
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - sa-ln11
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 1000
+      containers:
+      - name: besu-exec-client-ln11
+        image: hyperledger/besu:23.10.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8551    #engine
+        - containerPort: 30303   #json-rpc
+        - containerPort: 8646
+        - containerPort: 9545    #Metrics
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        command:
+        - "/bin/sh"
+        - "-c"
+        args:
+          - |
+            exec /opt/besu/bin/besu \
+            --config-file=/etc/besu/config.toml \
+            --engine-rpc-enabled --engine-host-allowlist="*" \
+            --engine-jwt-secret=/jwt/jwt.hex --network=mainnet \
+            --Xdns-enabled=true --Xdns-update-enabled=true --Xnat-kube-service-name=besu-exec-client-svc --sync-mode=X_CHECKPOINT --data-storage-format=BONSAI
+        volumeMounts:
+        - name: besu-config
+          mountPath: /etc/besu
+          readOnly: true
+        - name: besu-jwt-pvc-ln11
+          mountPath: /jwt
+        - name: besu-pvc-ln11
+          mountPath: /data/besu
+      volumes:
+      - name: besu-config
+        configMap:
+          name: besu-exec-client-config-ln11
+  volumeClaimTemplates:
+    - metadata:
+        name: besu-pvc-ln11
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1500Gi
+        storageClassName: microk8s-hostpath
+    - metadata:
+        name: besu-jwt-pvc-ln11
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Mi
+        storageClassName: microk8s-hostpath
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: besu-exec-client-svc-ln11
+  namespace: prod
+  labels:
+    app: besu-exec-client-svc-ln11
+    app.kubernetes.io/name: besu-exec-client-svc-ln11
+    app.kubernetes.io/instance: besu-exec-client-svc-ln11
+spec:
+  selector:
+    app: besu-exec-client-ln11
+    app.kubernetes.io/name: besu-exec-client-ln11
+  ports:
+    - name: json-rpc
+      port: 8551
+      targetPort: 8551
+      protocol: TCP
+    - name: ws
+      port: 8546
+      targetPort: 8546
+      protocol: TCP
+    - name: metrics
+      port: 9545
+      targetPort: 9545
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: besu-exec-client-rpc-svc-ln11
+  namespace: prod
+  labels:
+    app: besu-exec-client-rpc-svc-ln11
+    app.kubernetes.io/name: besu-exec-client-rpc-svc-ln11
+    app.kubernetes.io/instance: besu-exec-client-rpc-svc-ln11
+spec:
+  type: NodePort
+  selector:
+    app: besu-exec-client-ln11
+    app.kubernetes.io/name: besu-exec-client-ln11
+  ports:
+    - name: rlpx
+      port: 30303
+      targetPort: 30303
+      nodePort: 30306
+      protocol: TCP
+    - name: discovery
+      port: 30303
+      targetPort: 30303
+      nodePort: 30306
+      protocol: UDP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: besu-exec-client-config-ln11
+  labels:
+    app: besu-exec-client-config-ln11
+    app.kubernetes.io/name: besu-exec-client-config-ln11
+  namespace: prod
+data:
+  config.toml: |-
+    # Every possible CLI should be in this file.
+    #
+    # Please use a plausible value, besu has to at least be able to parse it.
+    # If it is a multi-valued CLI make it a TOML array.
+    # If it is a number or boolean make it a number or boolean
+    # All other config options are strings, and must be quoted.
+
+    # # Node Information
+    data-path="/data/besu"
+
+    # # P2P network
+    p2p-enabled=true
+    nat-method="KUBERNETES"
+    Xnat-kube-service-name="besu-exec-client-svc-ln11"
+    Xnat-method-fallback-enabled=true
+    Xdns-update-enabled="true"
+
+    host-allowlist=["*"]
+
+    # # JSON-RPC
+    rpc-http-enabled=true
+    rpc-http-host="0.0.0.0"
+    rpc-http-cors-origins=["*"]
+
+    # # WebSockets API
+    rpc-ws-enabled=true
+    rpc-ws-host="0.0.0.0"
+    # Metrics
+    metrics-enabled=true
+    metrics-host="0.0.0.0"
+    metrics-port=9545

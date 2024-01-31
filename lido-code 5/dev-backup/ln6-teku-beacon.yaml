@@ -1,0 +1,154 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: teku-beacon-ln6
+  namespace: dev
+  labels:
+    app: teku-beacon-ln6
+    app.kubernetes.io/name: teku-beacon-ln6
+    app.kubernetes.io/instance: teku-beacon-ln6
+    
+spec:
+  replicas: 1
+  serviceName: teku-beacon-svc-ln6
+  selector:
+    matchLabels:
+      app: teku-beacon-ln6
+      app.kubernetes.io/name: teku-beacon-ln6
+      app.kubernetes.io/instance: teku-beacon-ln6
+         
+  template:
+    metadata:
+      labels:
+        app: teku-beacon-ln6
+        app.kubernetes.io/name: teku-beacon-ln6
+        app.kubernetes.io/instance: teku-beacon-ln6
+          
+    spec:
+      terminationGracePeriodSeconds: 60
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - k8s-dev-slave-sa-ln6
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 1000
+      containers:
+      - name: teku-builder
+        image: flashbots/mev-boost:1.6
+        imagePullPolicy: Always
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        command:
+        - "/bin/sh"
+        - "-c"
+        args:
+          - |
+            exec ./mev-boost -goerli -addr 0.0.0.0:18550 -relay-check -relays https://0xafa4c6985aa049fb79dd37010438cfebeb0f2bd42b115b89dd678dab0670c1de38da0c4e9138c9290a398ecd9a0b3110@builder-relay-goerli.flashbots.net
+      - name: teku-beacon
+        image: consensys/teku:23.8.0
+        imagePullPolicy: Always
+        env:
+        - name: JAVA_OPTS
+          value: "-Xmx8g"
+        command:
+        - "/bin/sh"
+        - "-c"
+        args:
+          - |
+            exec /opt/teku/bin/teku --initial-state=https://goerli.checkpoint-sync.ethpandaops.io --data-base-path=/root --ee-endpoint="http://besu-exec-client-svc-ln6.dev:8551" --p2p-port=32000 \
+            --rest-api-enabled=true --rest-api-interface=0.0.0.0 --rest-api-host-allowlist=* --rest-api-port=4000 \
+            --metrics-enabled=true --metrics-interface=0.0.0.0 --metrics-categories=BEACON,PROCESS,LIBP2P,JVM,NETWORK,PROCESS \
+            --metrics-host-allowlist=* --metrics-port=8008 --validators-proposer-default-fee-recipient=0x12ddE92E641F1FD82Bd2B0707b7ddee4cb4f671a \
+            --p2p-peer-lower-bound=25 --p2p-nat-method=UPNP  --ee-jwt-secret-file=/jwt/jwt.hex --log-destination=BOTH --builder-endpoint="http://127.0.0.1:18550" --network=goerli
+        volumeMounts:
+        - name: teku-beacon-pvc-ln6
+          mountPath: /root
+        - name: teku-jwt-pvc-ln6
+          mountPath: /jwt
+  volumeClaimTemplates:
+    - metadata:
+        name: teku-beacon-pvc-ln6
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 700Gi
+        storageClassName: local-hostpath
+    - metadata:
+        name: teku-jwt-pvc-ln6
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+        storageClassName: local-hostpath
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teku-svc-ln6
+  namespace: dev
+  labels:
+    app: teku-svc-ln6
+    app.kubernetes.io/name: teku-svc-ln6
+    app.kubernetes.io/instance: teku-svc-ln6
+spec:
+  selector:
+    app: teku-beacon-ln6
+    app.kubernetes.io/name: teku-beacon-ln6
+    app.kubernetes.io/instance: teku-beacon-ln6
+  
+  ports:
+  - name: port-4000
+    protocol: TCP
+    port: 4000
+    targetPort: 4000
+  - name: port-8008
+    protocol: TCP
+    port: 8008
+    targetPort: 8008
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teku-svc1-ln6
+  namespace: dev
+  labels:
+    app: teku-svc-p2p-ln6
+    namespace: dev
+    app.kubernetes.io/name: teku-svc-p2p-ln6
+    app.kubernetes.io/instance: teku-svc-p2p-ln6
+spec:
+  type: NodePort
+  selector:
+    app: teku-beacon-ln6
+    app.kubernetes.io/name: teku-beacon-ln6
+    app.kubernetes.io/instance: teku-beacon-ln6
+      
+  ports:
+    - name: teku-tcp
+      port: 32000
+      targetPort: 32000
+      nodePort: 32002
+      protocol: TCP
+    - name: teku-udp
+      port: 32000
+      targetPort: 32000
+      nodePort: 32002
+      protocol: UDP

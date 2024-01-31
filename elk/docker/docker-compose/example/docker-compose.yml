@@ -1,0 +1,21 @@
+## /srv/docker-apps/example_app/docker-compose.yml
+version: '3.3'
+services:
+  example_app:
+    image: example_app:stable
+    container_name: example_app
+    env_file:
+      - .env
+    ports:
+      - 3000:3000
+    volumes:
+      - "${DATA_DIR}/config:/config"
+      # If we want to use timezone from host machine
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10000k"  # Sets the maximum size of the log file
+        max-file: "10"    # Sets the maximum number of log files to retain 
+

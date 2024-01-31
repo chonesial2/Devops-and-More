@@ -1,0 +1,22 @@
+- name: Copy public key to remote server
+  authorized_key:
+    user: root  # Replace with the remote user on the server
+    key: "{{ lookup('file', '~/jenkins.pub') }}"
+    state: present
+  
+- name: Create directory
+  file:
+    path: /srv/docker-apps/test  # Replace with the desired directory path
+    state: directory
+    mode: 0755  # Replace with the desired permissions (e.g., 0755 for rwxr-xr-x)
+
+- name: Copy file
+  copy:
+    src:  ~/.env
+    dest: /srv/docker-apps/test/
+
+- name: Log in to GitHub Container Registry
+  docker_login:
+     registry_url: "{{ registry_url }}"
+     username: "{{ username }}"
+     password: "{{ password }}"

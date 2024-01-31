@@ -1,0 +1,43 @@
+---
+# defaults file for docker-installation
+
+- name: Install dependencies
+  apt:
+    name: "{{ packages }}"
+    state: present
+    update_cache: true
+  vars:
+    packages:
+    - apt-transport-https
+    - ca-certificates
+    - curl
+    - software-properties-common
+    - gnupg2
+
+- name: Install Docker
+  apt:
+    name: docker.io
+    state: present
+#    update_cache: true
+
+- name: Install  Docker Compose
+  apt:
+    name: 'docker-compose'
+    state: present
+#  become: true
+
+- name: Schedule cron for clean up docker containers
+  cron:
+    name: "cron for clean up docker containers"
+    hour: "5"
+    weekday: "1"
+    job: /usr/bin/docker system prune -a --force --filter "until=240h"
+    state: present
+
+- name: Schedule cron for clean up docker images
+  cron:
+    name: "cron for clean up docker images"
+    hour: "5"
+    minute: "30"
+    job: /usr/bin/docker image prune -a --force --filter "until=240h"
+    state: present

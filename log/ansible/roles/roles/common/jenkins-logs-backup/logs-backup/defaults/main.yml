@@ -1,0 +1,30 @@
+---
+# defaults file for log-backup
+
+log_backup_user: enter root or ubuntu
+log_backup_group: enter root or ubuntu
+log_backup_script_dir: /srv/XXXXXX-backup
+log_bucketName: bucket-example
+log_remote_backup_path: XXXXXXX
+s3cmd:
+  key: 'XXXXXXXXXXXXXXX'
+  secret: 'XXXXXXXXXXXXXXXXXXXXXX'
+  host_base: nyc3.digitaloceanspaces.com
+
+slack_webhook:
+  alerts: https://hooks.slack.com/services/XXXXXXXX/XXXXXXXX/xyxyxyxyxyxyxyxyxyxyxyxyxy
+  notifications: https://hooks.slack.com/services/XXXXXXXX/XXXXXXXX/xyxyxyxyxyxyxyxyxyxyxyxyxy
+
+logs_files_backup_list: 
+  #- App:
+  #      log_dir: enter jenkins or logs files path
+  #      log_fileName: jenkins
+  #      log_file_extension: tar.gz
+  #      log_remote_backup_path: "{{ log_remote_backup_path }}"
+  #      log_bucketName: "{{ log_bucketName }}"
+  # - kern:
+  #     log_dir: /var/log
+  #     log_fileName: kern
+  #     log_file_extension: gz
+  #     log_remote_backup_path: "{{ log_remote_backup_path }}"
+  #     log_bucketName: "{{ log_bucketName }}"

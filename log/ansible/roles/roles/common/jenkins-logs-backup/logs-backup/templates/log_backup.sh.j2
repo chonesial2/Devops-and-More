@@ -1,0 +1,45 @@
+#!/bin/bash
+source $1
+
+#compress backup folder 
+tar czf $log_dir/$log_file_name.tar.gz $log_dir/$log_file_name
+
+search_command="ls $log_dir | grep $log_file_name | grep $log_file_extension"
+temp_dir=/tmp/$log_file_name
+hostname="${server_hostname:-`hostname -f`}"
+
+function handle_error {
+  echo "Logs backup failed"
+  curl -X POST -H 'Content-type: application/json' --data "{'text':'Logs files backup Failed for s3://$bucketName/$remote_backup_path/$hostname/$log_file_name/'}" $slack_webhook_alerts
+}
+
+echo "Command to search: $search_command"
+files_list=`eval ${search_command}`
+
+echo "Create tmp dir."
+mkdir -p $temp_dir
+
+echo "Looking for the files in: $log_dir"
+
+for file in $files_list
+do
+  file_modification_time=`stat -c%y $log_dir/$file`
+  echo "Copying file $log_dir/$file to $temp_dir/$log_file_name-${file_modification_time// /_}.$log_file_extension"
+  `cp -r $log_dir/$file "$temp_dir/$log_file_name-${file_modification_time// /_}.$log_file_extension"`
+done
+
+echo "Syncing file from $temp_dir/ to s3://$bucketName/$remote_backup_path/$hostname/$log_file_name/"
+/usr/local/bin/s3cmd sync $temp_dir/* s3://$bucketName/$remote_backup_path/$hostname/$log_file_name/ --recursive
+
+if [ $? == 0 ]
+then
+  curl -X POST -H 'Content-type: application/json' --data "{'text':'Logs backup files synced  at: s3://$bucketName/$remote_backup_path/$hostname/$log_file_name/'}" $slack_webhook_notifications || handle_error
+
+#After copy a backup folder to s3 bucket move a compressed backup folder to $temp_dir/  for delete compress folder
+mv $log_dir/$log_file_name.tar.gz $temp_dir/ 
+
+echo "Deleting files from $temp_dir/" 
+rm -rf $temp_dir
+else
+  handle_error
+fi

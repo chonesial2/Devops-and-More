@@ -1,0 +1,82 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  labels:
+    app: prometheus
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+      annotations:
+        #prometheus.io/scrape: "true"
+          #  prometheus.io/port: "9090"
+    spec:
+      serviceAccountName: prometheus
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 1000
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.32.1
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 4086Mi
+            limits:
+              cpu: 5000m
+              memory: 8046Mi
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            - name: prometheus-pvc
+              mountPath: /prometheus
+            - name: prometheus-config
+              mountPath: /etc/prometheus/
+              readOnly: true              
+            - name: prometheus-config-cred
+              mountPath: /etc/prometheus/creds/
+          ports:
+            - containerPort: 9090
+            - containerPort: 9000
+          command:
+            # - "/bin/sh"
+            # - "-c"          
+            # - "sleep 600" 
+            - /bin/prometheus
+          args:
+            - --storage.tsdb.path=/prometheus
+            - --config.file=/etc/prometheus/prometheus.yaml
+            - --web.config.file=/etc/prometheus/creds/webconfig.yaml
+      volumes:
+        - name: prometheus-pvc
+          persistentVolumeClaim:
+            claimName: prometheus-pvc
+        - name: prometheus-config
+          configMap:
+            name: prometheus-configmap
+            items:
+              - key: prometheus.yaml
+                path: prometheus.yaml
+        - name: prometheus-config-cred
+          configMap:
+            name: prometheus-configmap-cred
+            items:
+              - key: webconfig.yaml
+                path: webconfig.yaml                   

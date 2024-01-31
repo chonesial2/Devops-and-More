@@ -1,0 +1,19 @@
+version: '3.3'
+services:
+  apache-tika:
+    image: "apache/tika:2.6.0.1-full"
+    ports:
+      - '9998:9998'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10000k"
+        max-file: "10"
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: any
+        delay: 10s

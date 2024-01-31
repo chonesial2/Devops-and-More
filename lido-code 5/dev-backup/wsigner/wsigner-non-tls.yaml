@@ -1,0 +1,152 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: wsigner
+  namespace: dev1
+spec:
+  selector:
+    matchLabels:
+      app: wsigner
+      app.kubernetes.io/name: wsigner
+  replicas: 1
+  serviceName: wsigner-svc
+  template:
+    metadata:
+      labels:
+        app: wsigner
+        app.kubernetes.io/name: wsigner
+    spec:
+      #serviceAccountName: test-sa
+      terminationGracePeriodSeconds: 10
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - op-dev-web3-corp
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 1000
+      initContainers:
+        - name: init-web3-key-certs
+          image: joostdecock/keytool
+          command:
+            - "/bin/sh"
+            - "-c"
+          args:
+            - |
+              #!/bin/sh
+              set -e
+              if [ -f /certs/web3signer_keystore.p12 ]; then
+                echo 'Keystore certificate already exists'
+                exit 0
+              fi
+              
+
+              echo 'Generating web3signer keystore certificates ...'
+              keytool -genkeypair -keystore /certs/web3signer_keystore.p12 -storetype PKCS12 -storepass test@1234 -alias web3signer -keyalg RSA -keysize 2048 -validity 109500 -dname "CN=localhost, OU=PegaSys, O=ConsenSys, L=Brisbane, ST=QLD, C=AU" -ext san=dns:localhost,ip:127.0.0.1
+              echo test@1234 > /certs/web3signer_keystore_password.txt
+              
+              echo "Generating teku_keystore ..."
+              keytool -genkeypair -keystore /certs/teku_client_keystore.p12 -storetype PKCS12 -storepass test@1234 -alias teku_client -keyalg RSA -keysize 2048 -validity 109500 -dname "CN=teku, OU=PegaSys, O=ConsenSys, L=Brisbane, ST=QLD, C=AU" -ext san=dns:localhost,ip:127.0.0.1
+              cp /certs/web3signer_keystore_password.txt /certs/teku_keystore_password.txt
+              
+              
+              echo "Generating truststore key file ..."
+              keytool -exportcert -keystore /certs/web3signer_keystore.p12 -storepass 'test@1234' -alias web3signer -rfc -file /certs/web3signer.pem
+              yes | keytool -importcert -storetype PKCS12 -keystore /certs/web3signer_truststore.p12 -alias web3signer -trustcacerts -storepass test@1234 -file /certs/web3signer.pem
+
+              cp /certs/teku_keystore_password.txt /certs/truststore_pass.txt
+              keytool -list -v -keystore /certs/teku_client_keystore.p12 -storepass 'test@1234'
+              echo "teku $(keytool -list -v -keystore /certs/teku_client_keystore.p12 -storepass 'test@1234'  | grep "SHA256:"  |awk  '{print $2}')" >> /certs/knownClients.txt
+              echo "teku $(keytool -list -v -keystore /certs/teku_client_keystore.p12 -storepass 'test@1234'  | grep "SHA256:"  |awk  '{print $2}' | tr -d ': ' )"  >> /certs/knownClients.txt
+          volumeMounts:          
+            - name: web3-certs-pvc
+              mountPath: /certs             
+      containers:
+      - name: wsigner
+        image: consensys/web3signer:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 9000
+        - containerPort: 9001
+        env:
+          # - name: POD_IP
+        command:
+          - "/bin/sh"
+          - "-c"
+        args:
+          - |
+            exec /opt/web3signer/bin/web3signer --key-store-path=/web3config --http-listen-host="0.0.0.0" \
+            --http-listen-port=9000 --http-host-allowlist="*" \
+            --metrics-enabled --metrics-port=9001 --logging=INFO eth2 --slashing-protection-enabled=false 
+            #--tls-keystore-file=/web3config/web3signer_keystore.p12  --tls-keystore-password-file=/web3config/web3signer_keystore_password.txt --tls-known-clients-file=/web3config/knownClients.txt \
+        volumeMounts:
+        - name: web3-certs-pvc
+          mountPath: /web3config
+  volumeClaimTemplates:
+    - metadata:
+        name: web3-certs-pvc
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 100Mi
+        storageClassName: local-hostpath        
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wsigner-svc
+  namespace: dev1
+  labels:
+    app: wsigner-svc
+    app.kubernetes.io/name: wsigner-svc
+    app.kubernetes.io/instance: wsigner-svc
+spec:
+  selector:
+    app: wsigner
+    app.kubernetes.io/name: wsigner
+  ports:
+    - name: signer
+      port: 9000
+      targetPort: 9000
+      protocol: TCP
+    - name: metrics
+      port: 9001
+      targetPort: 9001
+      protocol: TCP
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wsigner-svc-p2p
+  namespace: dev1
+  labels:
+    app: wsigner-svc-p2p
+    app.kubernetes.io/name: wsigner-svc-p2p
+    app.kubernetes.io/instance: wsigner-svc-p2p
+spec:
+  type: NodePort
+  selector:
+    app: wsigner
+    app.kubernetes.io/name: wsigner
+  ports:
+    - name: signer
+      port: 9000
+      targetPort: 9000
+      nodePort: 30901
+      protocol: TCP
+
+
+
+
